@@ -2,6 +2,8 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 import zipfile
 from pathlib import Path
 
+from common import merge_dataset_csv
+
 api = KaggleApi()
 api.authenticate()
 
@@ -47,3 +49,5 @@ for fname in file_names:
         with zipfile.ZipFile(zip_path, 'r') as zf:
             zf.extractall(output_dir)
         zip_path.unlink()  # Delete the zip file after extraction
+
+merge_dataset_csv()
