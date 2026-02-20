@@ -1,8 +1,9 @@
+import pandas as pd
 from kaggle.api.kaggle_api_extended import KaggleApi
 import zipfile
 from pathlib import Path
 
-from common import merge_dataset_csv
+from common import merge_dataset_csv, split_dataset_80_10_10
 
 api = KaggleApi()
 api.authenticate()
@@ -51,3 +52,5 @@ for fname in file_names:
         zip_path.unlink()  # Delete the zip file after extraction
 
 merge_dataset_csv()
+merged = pd.read_csv("dataset/merged_data.csv")
+split_dataset_80_10_10(merged)
