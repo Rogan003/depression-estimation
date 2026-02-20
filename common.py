@@ -35,8 +35,7 @@ def split_dataset_80_10_10(df, seed=42):
     test_df.to_csv("dataset/test.csv", index=False)
 
 # TODO: Remove interviewer (she is less loud or just use the transcript files)?
-# TODO: Split into windows of 5-10s?
-# TODO: Play with these preprocessing params once the pipeline is established
+# TODO: Play with these preprocessing params once the pipeline is established. Add some more preprocessing stuff?
 def preprocess(file_path):
     # 1. Load + resample + mono
     audio, sr = librosa.load(file_path, sr=16000, mono=True)
@@ -56,7 +55,52 @@ def preprocess(file_path):
 
     return audio_normalized
 
-# TODO: Add extracting of MFCC
+def extract_mfcc(audio, sr, n_mfcc=13):
+    return librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=n_mfcc)
 
-if __name__ == "__main__":
-    preprocess("dataset/300_AUDIO.wav")
+def extract_pitch(audio, sr):
+    pitches, magnitudes = librosa.piptrack(y=audio, sr=sr)
+    pitch = []
+    for i in range(pitches.shape[1]):
+        index = magnitudes[:, i].argmax()
+        pitch.append(pitches[index, i])
+    return np.array(pitch)
+
+def extract_energy(audio):
+    return librosa.feature.rms(y=audio)[0]
+
+def get_summary_features(file_path):
+    audio = preprocess(file_path)
+    sr = 16000 # as used in preprocess
+    
+    mfcc = extract_mfcc(audio, sr)
+    energy = extract_energy(audio)
+    
+    features = np.hstack([
+        np.mean(mfcc, axis=1),
+        np.std(mfcc, axis=1),
+        np.mean(energy),
+        np.std(energy)
+    ])
+    return features
+
+def get_mfcc_windows(file_path, n_mfcc=13, window_size_s=5, hop_length_s=2.5):
+    audio = preprocess(file_path)
+    sr = 16000
+    
+    # Calculate MFCC
+    mfcc = extract_mfcc(audio, sr, n_mfcc=n_mfcc)
+    
+    # MFCC matrix shape: (n_mfcc, n_frames)
+    # Convert window sizes from seconds to frames
+    hop_length = 512 # default for librosa.feature.mfcc
+    frames_per_sec = sr / hop_length
+    window_frames = int(window_size_s * frames_per_sec)
+    hop_frames = int(hop_length_s * frames_per_sec)
+    
+    windows = []
+    for start in range(0, mfcc.shape[1] - window_frames + 1, hop_frames):
+        window = mfcc[:, start : start + window_frames]
+        windows.append(window)
+        
+    return np.array(windows) # Shape: (n_windows, n_mfcc, window_frames)
