@@ -55,16 +55,21 @@ def preprocess(file_path):
 
     return audio_normalized
 
-def extract_mfcc(audio, sr, n_mfcc=13):
-    return librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=n_mfcc)
+def extract_mfcc(audio, sr, n_mfcc=13, hop_length=512):
+    return librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=n_mfcc, hop_length=hop_length)
 
-def extract_pitch(audio, sr):
-    pitches, magnitudes = librosa.piptrack(y=audio, sr=sr)
-    pitch = []
-    for i in range(pitches.shape[1]):
-        index = magnitudes[:, i].argmax()
-        pitch.append(pitches[index, i])
-    return np.array(pitch)
+def extract_pitch(audio, sr, hop_length=512):
+    # F0 estimation using pYIN
+    f0, voiced_flag, voiced_probs = librosa.pyin(
+        audio,
+        fmin=librosa.note_to_hz('C2'),
+        fmax=librosa.note_to_hz('C7'),
+        sr=sr,
+        hop_length=hop_length
+    )
+    # Fill NaNs in f0 with 0 (unvoiced)
+    f0[np.isnan(f0)] = 0
+    return f0
 
 def extract_energy(audio):
     return librosa.feature.rms(y=audio)[0]
@@ -72,28 +77,32 @@ def extract_energy(audio):
 def get_summary_features(file_path):
     audio = preprocess(file_path)
     sr = 16000 # as used in preprocess
+    hop_length = 512
     
-    mfcc = extract_mfcc(audio, sr)
+    mfcc = extract_mfcc(audio, sr, hop_length=hop_length)
     energy = extract_energy(audio)
+    pitch = extract_pitch(audio, sr, hop_length=hop_length)
     
     features = np.hstack([
         np.mean(mfcc, axis=1),
         np.std(mfcc, axis=1),
         np.mean(energy),
-        np.std(energy)
+        np.std(energy),
+        np.mean(pitch),
+        np.std(pitch)
     ])
     return features
 
 def get_mfcc_windows(file_path, n_mfcc=13, window_size_s=5, hop_length_s=2.5):
     audio = preprocess(file_path)
     sr = 16000
+    hop_length = 512
     
     # Calculate MFCC
-    mfcc = extract_mfcc(audio, sr, n_mfcc=n_mfcc)
+    mfcc = extract_mfcc(audio, sr, n_mfcc=n_mfcc, hop_length=hop_length)
     
     # MFCC matrix shape: (n_mfcc, n_frames)
     # Convert window sizes from seconds to frames
-    hop_length = 512 # default for librosa.feature.mfcc
     frames_per_sec = sr / hop_length
     window_frames = int(window_size_s * frames_per_sec)
     hop_frames = int(hop_length_s * frames_per_sec)
