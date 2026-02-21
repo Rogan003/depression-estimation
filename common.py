@@ -34,23 +34,44 @@ def split_dataset_80_10_10(df, seed=42):
     val_df.to_csv("dataset/val.csv", index=False)
     test_df.to_csv("dataset/test.csv", index=False)
 
-# TODO: Remove interviewer (she is less loud or just use the transcript files)?
+def remove_interviewer_from_audio(audio, file_id, sr):
+    transcript = pd.read_csv(f"dataset/{file_id}_TRANSCRIPT.csv", sep="\t")
+
+    participant_segments = transcript[transcript["speaker"] == "Participant"]
+
+    audio_segments = []
+    for _, row in participant_segments.iterrows():
+        start_sample = int(row["start_time"] * sr)
+        stop_sample = int(row["stop_time"] * sr)
+        audio_segments.append(audio[start_sample:stop_sample])
+    
+    if len(audio_segments) > 0:
+        audio = np.concatenate(audio_segments)
+    else:
+        audio = np.array([])
+
+    return audio
+
 # TODO: Play with these preprocessing params once the pipeline is established. Add some more preprocessing stuff?
 def preprocess(file_path):
+    sr = 16000
     # 1. Load + resample + mono
-    audio, sr = librosa.load(file_path, sr=16000, mono=True)
+    audio, sr = librosa.load(file_path, sr=sr, mono=True)
 
     print("Original length:", len(audio)/sr, "seconds")
 
-    # 2. Remove silence
+    # 2. Remove interviewer
+    audio_without_interviewer = remove_interviewer_from_audio(audio, file_path[8:11], sr)
+
+    # 3. Remove silence
     audio_trimmed, _ = librosa.effects.trim(
-        audio,
+        audio_without_interviewer,
         top_db=20
     )
 
     print("After trimming:", len(audio_trimmed)/sr, "seconds")
 
-    # 3. Normalize
+    # 4. Normalize
     audio_normalized = audio_trimmed / np.max(np.abs(audio_trimmed))
 
     return audio_normalized

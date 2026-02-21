@@ -28,7 +28,7 @@ while True:
 
 print(f"Total files retrieved: {len(all_files)}")
 
-file_names = sorted([f.name for f in all_files if f.name.endswith('_AUDIO.wav') or "avec" in f.name.lower()])
+file_names = sorted([f.name for f in all_files if f.name.endswith('_AUDIO.wav') or "avec" in f.name.lower() or "transcript" in f.name.lower()])
 print(file_names)
 print(len(file_names))
 
