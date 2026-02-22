@@ -67,9 +67,11 @@ def main():
     # Load data
     train_dataset = AudioDataset("dataset/train.csv")
     val_dataset = AudioDataset("dataset/val.csv")
-    
+
+    # TODO: batch size improve? use everything since I have a small dataset?
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    # TODO: Preprocess val before prediction? Or is it already done?
     
     model = CNNLSTM()
     criterion = nn.MSELoss()

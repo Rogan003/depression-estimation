@@ -52,9 +52,7 @@ def remove_interviewer_from_audio(audio, file_id, sr):
 
     return audio
 
-# TODO: Play with these preprocessing params once the pipeline is established. Add some more preprocessing stuff?
-def preprocess(file_path):
-    sr = 16000
+def preprocess(file_path, sr):
     # 1. Load + resample + mono
     audio, sr = librosa.load(file_path, sr=sr, mono=True)
 
@@ -96,8 +94,8 @@ def extract_energy(audio):
     return librosa.feature.rms(y=audio)[0]
 
 def get_summary_features(file_path):
-    audio = preprocess(file_path)
-    sr = 16000 # as used in preprocess
+    sr = 16000
+    audio = preprocess(file_path, sr)
     hop_length = 512
     
     mfcc = extract_mfcc(audio, sr, hop_length=hop_length)
@@ -115,8 +113,8 @@ def get_summary_features(file_path):
     return features
 
 def get_mfcc_windows(file_path, n_mfcc=13, window_size_s=5, hop_length_s=2.5):
-    audio = preprocess(file_path)
     sr = 16000
+    audio = preprocess(file_path, sr)
     hop_length = 512
     
     # Calculate MFCC

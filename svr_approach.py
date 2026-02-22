@@ -35,8 +35,8 @@ def main():
     X_val, y_val = load_data("dataset/val.csv")
     
     print(f"Training SVR model with {len(X_train)} samples...")
-    # Using default SVR parameters for now, can be tuned later
-    model = SVR(kernel='rbf')
+    # TODO: Using default SVR parameters for now, can be tuned later
+    model = SVR(kernel='rbf') # kernel='sigmoid'?
     model.fit(X_train, y_train)
     
     print("Evaluating model...")
