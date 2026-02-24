@@ -25,7 +25,7 @@ class AudioDataset(Dataset):
                 windows = get_mfcc_windows(file_path)
                 if len(windows) > 0:
                     for window in windows:
-                        self.data.append((window, score))
+                        self.data.append((window, score)) # TODO: Think about these windows? Do they even make sense?
             else:
                 print(f"Warning: {file_path} not found.")
 
@@ -37,7 +37,7 @@ class AudioDataset(Dataset):
         return torch.FloatTensor(window).unsqueeze(0), torch.FloatTensor([y])
 
 class CNNLSTM(nn.Module):
-    def __init__(self, n_mfcc=13, window_frames=156):
+    def __init__(self):
         super(CNNLSTM, self).__init__()
         self.cnn = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=3, padding=1),
@@ -51,21 +51,14 @@ class CNNLSTM(nn.Module):
             nn.Dropout(0.2)
         )
         
-        # After MaxPool 1: (n_mfcc//2, window_frames//2) = (6, 78)
-        # After MaxPool 2: (6//2, 78//2) = (3, 39)
-        # Current cnn_out shape: (batch, 32, 3, 39)
-        # We want to treat one dimension as time. Let's use the window_frames dimension (width).
-        # We'll pool over the height (n_mfcc) and keep the width as time sequence.
-        
-        self.lstm_input_size = 32 * 3 # 32 channels * 3 frequency bins
+        self.lstm_input_size = 32 * 3
         self.lstm = nn.LSTM(input_size=self.lstm_input_size, hidden_size=64, batch_first=True, num_layers=2, dropout=0.2)
         self.fc = nn.Linear(64, 1)
 
     def forward(self, x):
         b, c, h, w = x.size()
-        cnn_out = self.cnn(x) # (b, 32, 3, 39)
-        
-        # Reshape to (b, width, channels * height) -> (b, 39, 32 * 3)
+        cnn_out = self.cnn(x)
+
         cnn_out = cnn_out.permute(0, 3, 1, 2).contiguous()
         cnn_out = cnn_out.view(b, cnn_out.size(1), -1)
         
@@ -76,25 +69,20 @@ def main():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cpu") # using Mac GPU got me worse results
 
-    # Load data
     train_dataset = AudioDataset("dataset/train.csv")
     val_dataset = AudioDataset("dataset/val.csv")
 
-    # TODO: batch size improve? use everything since I have a small dataset?
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    # TODO: Preprocess val before prediction? Or is it already done?
     
     model = CNNLSTM().to(device)
-    criterion = nn.SmoothL1Loss()
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
     
     print("Starting training...")
     epochs = 20
-    best_loss = float('inf')
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
@@ -104,7 +92,7 @@ def main():
 
             optimizer.zero_grad()
             outputs = model(batch_x)
-            loss = criterion(outputs, batch_y)
+            loss = combined_loss(outputs, batch_y, alpha=0.7)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
             optimizer.step()
@@ -142,6 +130,25 @@ def main():
     print(f"MAE: {mae:.4f}")
     print(f"RMSE: {rmse:.4f}")
     print(f"Pearson correlation: {pearson_corr:.4f}")
+
+def combined_loss(y_pred, y_true, alpha=0.5):
+    # MAE part
+    mae = torch.mean(torch.abs(y_pred - y_true))
+
+    # Pearson part
+    y_true_mean = torch.mean(y_true)
+    y_pred_mean = torch.mean(y_pred)
+
+    y_true_centered = y_true - y_true_mean
+    y_pred_centered = y_pred - y_pred_mean
+
+    numerator = torch.sum(y_true_centered * y_pred_centered)
+    denominator = torch.sqrt(torch.sum(y_true_centered ** 2)) * torch.sqrt(torch.sum(y_pred_centered ** 2))
+
+    pearson = numerator / (denominator + 1e-8)
+
+    loss = alpha * mae + (1 - alpha) * (1 - pearson)
+    return loss
 
 if __name__ == "__main__":
     main()
