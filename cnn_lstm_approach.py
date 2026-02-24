@@ -10,14 +10,14 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from scipy.stats import pearsonr
 
 class AudioDataset(Dataset):
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, mean=None, std=None, y_mean=None, y_std=None):
         self.df = pd.read_csv(csv_path)
         self.data = []
         
         print(f"Loading data from {csv_path}...")
         for index, row in self.df.iterrows():
             participant_id = int(row['Participant_ID'])
-            score = row['PHQ8_Score']
+            score = float(row['PHQ8_Score'])
             file_path = f"dataset/{participant_id}_AUDIO.wav"
             
             if os.path.exists(file_path):
@@ -29,67 +29,119 @@ class AudioDataset(Dataset):
             else:
                 print(f"Warning: {file_path} not found.")
 
+        # Feature normalization (per-dataset, global mean/std)
+        all_windows = np.array([item[0] for item in self.data])
+        if mean is None or std is None:
+            self.mean = np.mean(all_windows)
+            self.std = np.std(all_windows)
+        else:
+            self.mean = mean
+            self.std = std
+        
+        # Target normalization (based on unique rows of df, not per-window duplication)
+        if y_mean is None or y_std is None:
+            self.y_mean = float(self.df['PHQ8_Score'].mean())
+            self.y_std = float(self.df['PHQ8_Score'].std() + 1e-6)
+        else:
+            self.y_mean = y_mean
+            self.y_std = y_std
+        
+        normalized_data = []
+        for window, score in self.data:
+            window = (window - self.mean) / (self.std + 1e-6)
+            y = (score - self.y_mean) / self.y_std
+            normalized_data.append((window, y))
+        self.data = normalized_data
+
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        window, score = self.data[idx]
-        return torch.FloatTensor(window).unsqueeze(0), torch.FloatTensor([score])
+        window, y = self.data[idx]
+        return torch.FloatTensor(window).unsqueeze(0), torch.FloatTensor([y])
 
 class CNNLSTM(nn.Module):
     def __init__(self, n_mfcc=13, window_frames=156):
         super(CNNLSTM, self).__init__()
         self.cnn = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(2),
             nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.MaxPool2d(2)
+            nn.MaxPool2d(2),
+            nn.Dropout(0.2)
         )
         
-        # n_mfcc=13, window_frames=156
-        # After MaxPool 1: 13//2=6, 156//2=78
-        # After MaxPool 2: 6//2=3, 78//2=39
-        self.feature_dim = 32 * 3 * 39 
+        # After MaxPool 1: (n_mfcc//2, window_frames//2) = (6, 78)
+        # After MaxPool 2: (6//2, 78//2) = (3, 39)
+        # Current cnn_out shape: (batch, 32, 3, 39)
+        # We want to treat one dimension as time. Let's use the window_frames dimension (width).
+        # We'll pool over the height (n_mfcc) and keep the width as time sequence.
         
-        self.lstm = nn.LSTM(input_size=self.feature_dim, hidden_size=64, batch_first=True)
+        self.lstm_input_size = 32 * 3 # 32 channels * 3 frequency bins
+        self.lstm = nn.LSTM(input_size=self.lstm_input_size, hidden_size=64, batch_first=True, num_layers=2, dropout=0.2)
         self.fc = nn.Linear(64, 1)
 
     def forward(self, x):
         b, c, h, w = x.size()
-        cnn_out = self.cnn(x)
-        cnn_out = cnn_out.view(b, 1, -1)
+        cnn_out = self.cnn(x) # (b, 32, 3, 39)
+        
+        # Reshape to (b, width, channels * height) -> (b, 39, 32 * 3)
+        cnn_out = cnn_out.permute(0, 3, 1, 2).contiguous()
+        cnn_out = cnn_out.view(b, cnn_out.size(1), -1)
+        
         lstm_out, _ = self.lstm(cnn_out)
         return self.fc(lstm_out[:, -1, :])
 
 def main():
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     # Load data
     train_dataset = AudioDataset("dataset/train.csv")
-    val_dataset = AudioDataset("dataset/val.csv")
+    val_dataset = AudioDataset(
+        "dataset/val.csv",
+        mean=train_dataset.mean,
+        std=train_dataset.std,
+        y_mean=train_dataset.y_mean,
+        y_std=train_dataset.y_std,
+    )
 
     # TODO: batch size improve? use everything since I have a small dataset?
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
     # TODO: Preprocess val before prediction? Or is it already done?
     
-    model = CNNLSTM()
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    model = CNNLSTM().to(device)
+    criterion = nn.SmoothL1Loss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
     
     print("Starting training...")
-    epochs = 5
+    epochs = 20
+    best_loss = float('inf')
     for epoch in range(epochs):
         model.train()
-        total_loss = 0
+        total_loss = 0.0
         for batch_x, batch_y in train_loader:
+            batch_x = batch_x.to(device)
+            batch_y = batch_y.to(device)
+
             optimizer.zero_grad()
             outputs = model(batch_x)
             loss = criterion(outputs, batch_y)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
             optimizer.step()
-            total_loss += loss.item()
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(train_loader):.4f}")
+            total_loss += loss.item() * batch_x.size(0)
+        avg_loss = total_loss / len(train_loader.dataset)
+        scheduler.step(avg_loss)
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
         
     print("Evaluating...")
     model.eval()
@@ -97,9 +149,13 @@ def main():
     all_targets = []
     with torch.no_grad():
         for batch_x, batch_y in val_loader:
+            batch_x = batch_x.to(device)
             outputs = model(batch_x)
-            all_preds.extend(outputs.numpy().flatten())
-            all_targets.extend(batch_y.numpy().flatten())
+            # denormalize predictions and targets to original PHQ8 scale
+            preds = outputs.cpu().numpy().flatten() * val_dataset.y_std + val_dataset.y_mean
+            targets = batch_y.numpy().flatten() * val_dataset.y_std + val_dataset.y_mean
+            all_preds.extend(preds)
+            all_targets.extend(targets)
             
     all_preds = np.array(all_preds)
     all_targets = np.array(all_targets)

@@ -56,10 +56,10 @@ def get_summary_features(file_path):
     ])
     return features
 
-def get_mfcc_windows(file_path, n_mfcc=13, window_size_s=5, hop_length_s=2.5):
+def get_mfcc_windows(file_path, n_mfcc=13, window_size_s=10, hop_length_s=5):
     sr = 16000
     audio = preprocess(file_path, sr)
-    hop_length = 512
+    hop_length = 16384
     
     # Calculate MFCC
     mfcc = extract_mfcc(audio, sr, n_mfcc=n_mfcc, hop_length=hop_length)

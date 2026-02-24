@@ -30,6 +30,7 @@ def load_data(csv_path):
     return np.array(X), np.array(y)
 
 def main():
+    # TODO: Further test after watching videos about MFCC and the rest. Also, check results and everything in between
     print("Loading training data...")
     X_train, y_train = load_data("dataset/train.csv")
     
