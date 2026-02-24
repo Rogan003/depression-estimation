@@ -93,7 +93,7 @@ def main(window_size=10, hop_length=5):
     device = torch.device("cpu") # using Mac GPU got me worse results
 
     train_dataset = AudioDataset("dataset/train.csv", window_size, hop_length)
-    val_dataset = AudioDataset("dataset/val.csv")
+    val_dataset = AudioDataset("dataset/val.csv", window_size, hop_length)
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
@@ -150,7 +150,7 @@ def main(window_size=10, hop_length=5):
     return mae, rmse, pearson_corr
 
 if __name__ == "__main__":
-    mae, rmse, pearson_corr = main(10, 5)
+    mae, rmse, pearson_corr = main(42, 18)
 
     print(f"CNN+LSTM Evaluation Results:")
     print(f"MAE: {mae:.4f}")
