@@ -1,3 +1,5 @@
+# from concurrent.futures import ProcessPoolExecutor, as_completed
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,7 +12,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from scipy.stats import pearsonr
 
 class AudioDataset(Dataset):
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, window_size=10, hop_length=5):
         self.df = pd.read_csv(csv_path)
         self.data = []
         
@@ -22,7 +24,7 @@ class AudioDataset(Dataset):
             
             if os.path.exists(file_path):
                 print(f"Processing {file_path}...")
-                windows = get_mfcc_windows(file_path)
+                windows = get_mfcc_windows(file_path, window_size_s=window_size, hop_length_s=hop_length)
                 if len(windows) > 0:
                     for window in windows:
                         self.data.append((window, score)) # TODO: Think about these windows? Do they even make sense?
@@ -65,13 +67,32 @@ class CNNLSTM(nn.Module):
         lstm_out, _ = self.lstm(cnn_out)
         return self.fc(lstm_out[:, -1, :])
 
-def main():
+def combined_loss(y_pred, y_true, alpha=0.5):
+    # MAE part
+    mae = torch.mean(torch.abs(y_pred - y_true))
+
+    # Pearson part
+    y_true_mean = torch.mean(y_true)
+    y_pred_mean = torch.mean(y_pred)
+
+    y_true_centered = y_true - y_true_mean
+    y_pred_centered = y_pred - y_pred_mean
+
+    numerator = torch.sum(y_true_centered * y_pred_centered)
+    denominator = torch.sqrt(torch.sum(y_true_centered ** 2)) * torch.sqrt(torch.sum(y_pred_centered ** 2))
+
+    pearson = numerator / (denominator + 1e-8)
+
+    loss = alpha * mae + (1 - alpha) * (1 - pearson)
+    return loss
+
+def main(window_size=10, hop_length=5):
     torch.manual_seed(42)
     np.random.seed(42)
 
     device = torch.device("cpu") # using Mac GPU got me worse results
 
-    train_dataset = AudioDataset("dataset/train.csv")
+    train_dataset = AudioDataset("dataset/train.csv", window_size, hop_length)
     val_dataset = AudioDataset("dataset/val.csv")
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
@@ -125,30 +146,46 @@ def main():
         pearson_corr, _ = pearsonr(all_targets, all_preds)
     else:
         pearson_corr = 0.0
-        
+
+    return mae, rmse, pearson_corr
+
+if __name__ == "__main__":
+    mae, rmse, pearson_corr = main(10, 5)
+
     print(f"CNN+LSTM Evaluation Results:")
     print(f"MAE: {mae:.4f}")
     print(f"RMSE: {rmse:.4f}")
     print(f"Pearson correlation: {pearson_corr:.4f}")
-
-def combined_loss(y_pred, y_true, alpha=0.5):
-    # MAE part
-    mae = torch.mean(torch.abs(y_pred - y_true))
-
-    # Pearson part
-    y_true_mean = torch.mean(y_true)
-    y_pred_mean = torch.mean(y_pred)
-
-    y_true_centered = y_true - y_true_mean
-    y_pred_centered = y_pred - y_pred_mean
-
-    numerator = torch.sum(y_true_centered * y_pred_centered)
-    denominator = torch.sqrt(torch.sum(y_true_centered ** 2)) * torch.sqrt(torch.sum(y_pred_centered ** 2))
-
-    pearson = numerator / (denominator + 1e-8)
-
-    loss = alpha * mae + (1 - alpha) * (1 - pearson)
-    return loss
-
-if __name__ == "__main__":
-    main()
+    # window_sizes = range(3, 61, 3)
+    # results = []
+    #
+    # combinations = []
+    # for w in window_sizes:
+    #     for h in range(2, w + 1, 2):
+    #         combinations.append((w, h))
+    #
+    # # Use all available CPU cores
+    # num_workers = None  # None = use os.cpu_count()
+    # with ProcessPoolExecutor(max_workers=num_workers) as executor:
+    #     # Submit all jobs
+    #     futures = {executor.submit(main, w, h): (w, h) for w, h in combinations}
+    #
+    #     for future in as_completed(futures):
+    #         w, h = futures[future]
+    #         try:
+    #             mae, rmse, pearson_corr = future.result()
+    #             results.append((mae, rmse, pearson_corr, w, h))
+    #         except Exception as e:
+    #             print(f"Error for window={w}, hop={h}: {e}")
+    #
+    # # Sort by MAE, then RMSE, then descending Pearson
+    # results.sort(key=lambda x: (x[0], x[1], -x[2]))
+    #
+    # # Print top 10 results
+    # print("Top 10 results:")
+    # for i, (mae, rmse, pearson, w, h) in enumerate(results[:10], 1):
+    #     print(f"#{i} window_size={w}s, hop_length={h}s")
+    #     print(f"   CNN+LSTM Evaluation Results:")
+    #     print(f"   MAE: {mae:.4f}")
+    #     print(f"   RMSE: {rmse:.4f}")
+    #     print(f"   Pearson correlation: {pearson:.4f}")
