@@ -10,7 +10,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from scipy.stats import pearsonr
 
 class AudioDataset(Dataset):
-    def __init__(self, csv_path, mean=None, std=None, y_mean=None, y_std=None):
+    def __init__(self, csv_path):
         self.df = pd.read_csv(csv_path)
         self.data = []
         
@@ -28,30 +28,6 @@ class AudioDataset(Dataset):
                         self.data.append((window, score))
             else:
                 print(f"Warning: {file_path} not found.")
-
-        # Feature normalization (per-dataset, global mean/std)
-        all_windows = np.array([item[0] for item in self.data])
-        if mean is None or std is None:
-            self.mean = np.mean(all_windows)
-            self.std = np.std(all_windows)
-        else:
-            self.mean = mean
-            self.std = std
-        
-        # Target normalization (based on unique rows of df, not per-window duplication)
-        if y_mean is None or y_std is None:
-            self.y_mean = float(self.df['PHQ8_Score'].mean())
-            self.y_std = float(self.df['PHQ8_Score'].std() + 1e-6)
-        else:
-            self.y_mean = y_mean
-            self.y_std = y_std
-        
-        normalized_data = []
-        for window, score in self.data:
-            window = (window - self.mean) / (self.std + 1e-6)
-            y = (score - self.y_mean) / self.y_std
-            normalized_data.append((window, y))
-        self.data = normalized_data
 
     def __len__(self):
         return len(self.data)
@@ -104,13 +80,7 @@ def main():
 
     # Load data
     train_dataset = AudioDataset("dataset/train.csv")
-    val_dataset = AudioDataset(
-        "dataset/val.csv",
-        mean=train_dataset.mean,
-        std=train_dataset.std,
-        y_mean=train_dataset.y_mean,
-        y_std=train_dataset.y_std,
-    )
+    val_dataset = AudioDataset("dataset/val.csv")
 
     # TODO: batch size improve? use everything since I have a small dataset?
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
@@ -151,9 +121,8 @@ def main():
         for batch_x, batch_y in val_loader:
             batch_x = batch_x.to(device)
             outputs = model(batch_x)
-            # denormalize predictions and targets to original PHQ8 scale
-            preds = outputs.cpu().numpy().flatten() * val_dataset.y_std + val_dataset.y_mean
-            targets = batch_y.numpy().flatten() * val_dataset.y_std + val_dataset.y_mean
+            preds = outputs.cpu().numpy().flatten()
+            targets = batch_y.numpy().flatten()
             all_preds.extend(preds)
             all_targets.extend(targets)
             
