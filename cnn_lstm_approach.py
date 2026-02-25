@@ -27,7 +27,7 @@ class AudioDataset(Dataset):
                 windows = get_mfcc_windows(file_path, window_size_s=window_size, hop_length_s=hop_length)
                 if len(windows) > 0:
                     for window in windows:
-                        self.data.append((window, score)) # TODO: Think about these windows? Do they even make sense?
+                        self.data.append((window, score))
             else:
                 print(f"Warning: {file_path} not found.")
 
