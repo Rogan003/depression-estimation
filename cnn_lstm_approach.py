@@ -151,11 +151,14 @@ def main(window_size=10, hop_length=5):
 
 if __name__ == "__main__":
     mae, rmse, pearson_corr = main(42, 18)
+    mae2, rmse2, pearson_corr2 = main(10, 5)
+    mae3, rmse3, pearson_corr3 = main(30, 20)
+    mae4, rmse4, pearson_corr4 = main(6, 4)
 
     print(f"CNN+LSTM Evaluation Results:")
-    print(f"MAE: {mae:.4f}")
-    print(f"RMSE: {rmse:.4f}")
-    print(f"Pearson correlation: {pearson_corr:.4f}")
+    print(f"MAE: {mae:.4f} MAE2: {mae2: .4f} MAE3: {mae3:.4f} MAE4: {mae4:.4f}")
+    print(f"RMSE: {rmse:.4f} RMSE2: {rmse2:.4f} RMSE3: {rmse3:.4f} RMSE4: {rmse4:.4f}")
+    print(f"Pearson correlation: {pearson_corr:.4f} Pearson correlation2: {pearson_corr2:.4f} Pearson correlation3: {pearson_corr3:.4f} Pearson correlation4: {pearson_corr4:.4f}")
     # window_sizes = range(3, 61, 3)
     # results = []
     #
