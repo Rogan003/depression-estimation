@@ -151,47 +151,8 @@ def main(window_size=10, hop_length=5):
 
 if __name__ == "__main__":
     mae, rmse, pearson_corr = main(42, 18)
-    # mae2, rmse2, pearson_corr2 = main(10, 5)
-    # mae3, rmse3, pearson_corr3 = main(30, 20)
-    # mae4, rmse4, pearson_corr4 = main(6, 4)
 
     print(f"CNN+LSTM Evaluation Results:")
-    # print(f"MAE: {mae:.4f} MAE2: {mae2: .4f} MAE3: {mae3:.4f} MAE4: {mae4:.4f}")
-    # print(f"RMSE: {rmse:.4f} RMSE2: {rmse2:.4f} RMSE3: {rmse3:.4f} RMSE4: {rmse4:.4f}")
-    # print(f"Pearson correlation: {pearson_corr:.4f} Pearson correlation2: {pearson_corr2:.4f} Pearson correlation3: {pearson_corr3:.4f} Pearson correlation4: {pearson_corr4:.4f}")
     print(f"MAE: {mae:.4f}")
     print(f"RMSE: {rmse:.4f}")
     print(f"Pearson correlation: {pearson_corr:.4f}")
-    # window_sizes = range(3, 61, 3)
-    # results = []
-    #
-    # combinations = []
-    # for w in window_sizes:
-    #     for h in range(2, w + 1, 2):
-    #         combinations.append((w, h))
-    #
-    # # Use all available CPU cores
-    # num_workers = None  # None = use os.cpu_count()
-    # with ProcessPoolExecutor(max_workers=num_workers) as executor:
-    #     # Submit all jobs
-    #     futures = {executor.submit(main, w, h): (w, h) for w, h in combinations}
-    #
-    #     for future in as_completed(futures):
-    #         w, h = futures[future]
-    #         try:
-    #             mae, rmse, pearson_corr = future.result()
-    #             results.append((mae, rmse, pearson_corr, w, h))
-    #         except Exception as e:
-    #             print(f"Error for window={w}, hop={h}: {e}")
-    #
-    # # Sort by MAE, then RMSE, then descending Pearson
-    # results.sort(key=lambda x: (x[0], x[1], -x[2]))
-    #
-    # # Print top 10 results
-    # print("Top 10 results:")
-    # for i, (mae, rmse, pearson, w, h) in enumerate(results[:10], 1):
-    #     print(f"#{i} window_size={w}s, hop_length={h}s")
-    #     print(f"   CNN+LSTM Evaluation Results:")
-    #     print(f"   MAE: {mae:.4f}")
-    #     print(f"   RMSE: {rmse:.4f}")
-    #     print(f"   Pearson correlation: {pearson:.4f}")
