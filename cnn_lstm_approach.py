@@ -1,5 +1,3 @@
-# from concurrent.futures import ProcessPoolExecutor, as_completed
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -68,10 +66,8 @@ class CNNLSTM(nn.Module):
         return self.fc(lstm_out[:, -1, :])
 
 def combined_loss(y_pred, y_true, alpha=0.5):
-    # MAE part
     mae = torch.mean(torch.abs(y_pred - y_true))
 
-    # Pearson part
     y_true_mean = torch.mean(y_true)
     y_pred_mean = torch.mean(y_pred)
 
@@ -140,8 +136,7 @@ def main(window_size=10, hop_length=5):
     
     mae = mean_absolute_error(all_targets, all_preds)
     rmse = np.sqrt(mean_squared_error(all_targets, all_preds))
-    
-    # Pearson might fail if all predictions are the same
+
     if len(np.unique(all_preds)) > 1:
         pearson_corr, _ = pearsonr(all_targets, all_preds)
     else:

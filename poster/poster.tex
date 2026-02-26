@@ -106,10 +106,18 @@ Predviđanje nivoa depresije kod ljudi na osnovu audio zapisa
     \block{Rezultati}{
         \begin{center}
             \begin{tabular}{l|c|c|c}
-                \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
+                \textbf{Model - validation} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
                 \hline
-                SVR & 4.65 & 5.32 & \textbf{0.57} \\
-                CNN+LSTM & \textbf{3.99} & \textbf{5.03} & 0.45 \\
+                SVR & 4.29 & 4.98 & \textbf{0.52} \\
+                CNN+LSTM & \textbf{3.99} & \textbf{5.02} & 0.45 \\
+            \end{tabular}
+        \end{center}
+        \begin{center}
+            \begin{tabular}{l|c|c|c}
+                \textbf{Model - test} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
+                \hline
+                SVR & 4.37 & 6.17 & \textbf{0.27} \\
+                CNN+LSTM & \textbf{5.51} & \textbf{7.20} & 0.05 \\
             \end{tabular}
         \end{center}
         \vspace{0.5em}
