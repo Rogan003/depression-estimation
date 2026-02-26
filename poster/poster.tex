@@ -1,0 +1,132 @@
+\documentclass[20pt, a1paper, portrait]{tikzposter}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+% Boje (iz pozadine logotipa)
+\definecolor{ftncolor}{HTML}{42959D}
+
+% Podešavanja teme
+\usetheme{Default}
+\usecolorstyle[colorPalette={white, ftncolor, ftncolor}]{Default}
+
+% Prilagođavanje boja za header i blokove
+\colorlet{titlefgcolor}{white}
+\colorlet{titlebgcolor}{ftncolor}
+\colorlet{blocktitlefgcolor}{white}
+\colorlet{blocktitlebgcolor}{ftncolor}
+\usetitlestyle{Filled}
+\useblockstyle{Default}
+
+% Prilagođavanje headera da logo bude desno i sve centrirano
+\makeatletter
+\settitle{ \vbox{
+    \color{titlefgcolor}
+    \vspace*{2em}
+    \begin{minipage}{0.7\textwidth}
+        \raggedright
+        {\bfseries \Huge \@title \par}
+        \vspace*{0.8em}
+        {\huge \textit{Analiza akustičkih karakteristika govora za detekciju nivoa depresije} \par}
+        \vspace*{1.2em}
+        {\LARGE \@author \quad | \quad \@institute \par}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.25\textwidth}
+        \raggedleft
+        \includegraphics[width=\linewidth]{ftnlogo.jpeg}
+    \end{minipage}
+    \vspace*{2em}
+}}
+\makeatother
+
+\title{
+\parbox{0.8\linewidth}{
+Predviđanje nivoa depresije kod ljudi na osnovu audio zapisa
+}
+}
+\author{Veselin Roganović, SV 36/2022}
+\institute{Fakultet tehničkih nauka, Novi Sad}
+
+\begin{document}
+
+\maketitle[width=1.0\textwidth]
+
+\begin{columns}
+    \column{0.33}
+    \block{Uvod}{
+        Depresija predstavlja jedan od najvećih izazova modernog društva. Pravovremena detekcija je ključna, ali često teška čak i za stručnjake.
+        Ovaj projekat istražuje mogućnost automatske procene nivoa depresije na osnovu \textbf{akustičkih karakteristika govora}, bez analize sadržaja izgovorenih reči.
+    }
+
+    \block{Skup podataka}{
+        Korišćen je \textbf{DAIC-WOZ} skup podataka koji sadrži:
+        \begin{itemize}
+            \item Audio zapise kliničkih intervjua.
+            \item \textbf{PHQ-8} skorove (0-24) kao ciljnu vrednost.
+            \item Ukupno 140 uzoraka (80\% trening, 10\% val, 10\% test).
+        \end{itemize}
+    }
+
+    \block{Predobrada}{
+        \begin{itemize}
+            \item Resampling na 16kHz i normalizacija amplitude.
+            \item Ekstrakcija MFCC koeficijenata, energije i pitch-a.
+        \end{itemize}
+    }
+
+    \column{0.33}
+    \block{Metodologija}{
+        Primenjena su dva različita pristupa:
+        \begin{enumerate}
+            \item \textbf{SVR (Support Vector Regression):}
+                \begin{itemize}
+                    \item Ulaz: Statistike MFCC-a (prosek, std, percentili).
+                    \item Optimizacija: RBF kernel, GridSearch za $C$ i $\epsilon$.
+                \end{itemize}
+            \item \textbf{CNN + LSTM:}
+                \begin{itemize}
+                    \item Ulaz: MFCC matrice (vremenski prozori).
+                    \item Arhitektura: Konvolucioni slojevi za prostorna obeležja praćeni LSTM slojevima za sekvence.
+                \end{itemize}
+        \end{enumerate}
+    }
+
+    \block{Arhitektura CNN+LSTM}{
+        \begin{itemize}
+            \item \textbf{CNN:} 2D slojevi sa BatchNormalization i Dropout-om.
+            \item \textbf{LSTM:} 2 sloja sa 64 skrivene jedinice.
+            \item \textbf{Gubitak:} Kombinovani MAE i Pearson loss.
+        \end{itemize}
+    }
+
+    \column{0.33}
+    \block{Rezultati}{
+        \begin{center}
+            \begin{tabular}{l|c|c|c}
+                \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
+                \hline
+                SVR & 4.65 & 5.32 & \textbf{0.57} \\
+                CNN+LSTM & \textbf{3.99} & \textbf{5.03} & 0.45 \\
+            \end{tabular}
+        \end{center}
+        \vspace{0.5em}
+        CNN+LSTM model postiže preciznija predviđanja (niži MAE), dok SVR pokazuje bolju linearnu korelaciju.
+    }
+
+    \block{Zaključak}{
+        Rezultati potvrđuju da akustička obeležja nose značajne informacije o mentalnom stanju govornika.
+        Kombinacija konvolucionih i rekurentnih mreža daje obećavajuće rezultate.
+    }
+
+    \block{Korišćeni alati i Literatura}{
+        \footnotesize
+        \texttt{Python, PyTorch, Librosa, Scikit-Learn} \\
+        \vspace{0.5em}
+        1. Alhanai et al., "Detecting Depression with Audio/Text Sequence Modeling", 2018.
+    }
+\end{columns}
+
+\end{document}

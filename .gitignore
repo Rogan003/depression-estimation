@@ -3,3 +3,6 @@
 venv
 
 dataset
+
+poster/poster.aux
+poster/poster.log
