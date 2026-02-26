@@ -70,10 +70,10 @@ Predviđanje nivoa depresije kod ljudi na osnovu audio zapisa
         \end{itemize}
     }
 
-    \block{Predobrada}{
+    \block{Pretprocesiranje}{
         \begin{itemize}
             \item Resampling na 16kHz i normalizacija amplitude.
-            \item Ekstrakcija MFCC koeficijenata, energije i pitch-a.
+            \item Ekstrakcija MFCC koeficijenata (u vremenskim prozorima).
         \end{itemize}
     }
 
@@ -84,12 +84,12 @@ Predviđanje nivoa depresije kod ljudi na osnovu audio zapisa
             \item \textbf{SVR (Support Vector Regression):}
                 \begin{itemize}
                     \item Ulaz: MFCC matrice (vremenski prozori).
-                    \item Arhitektura: SVR sa RBF kernelom
+                    \item Arhitektura: SVR sa RBF kernelom (C=1, epsilon=0.01, gamma='scale')
                 \end{itemize}
             \item \textbf{CNN + LSTM:}
                 \begin{itemize}
                     \item Ulaz: MFCC matrice (vremenski prozori).
-                    \item Arhitektura: Konvolucioni slojevi za prostorna obeležja praćeni LSTM slojevima za sekvence.
+                    \item Arhitektura: Konvolucioni slojevi za prostorna obeležja praćeni LSTM slojevima za sekvence i potpuno povezanim slojem.
                 \end{itemize}
         \end{enumerate}
     }
