@@ -83,8 +83,8 @@ Predviđanje nivoa depresije kod ljudi na osnovu audio zapisa
         \begin{enumerate}
             \item \textbf{SVR (Support Vector Regression):}
                 \begin{itemize}
-                    \item Ulaz: Statistike MFCC-a (prosek, std, percentili).
-                    \item Optimizacija: RBF kernel, GridSearch za $C$ i $\epsilon$.
+                    \item Ulaz: MFCC matrice (vremenski prozori).
+                    \item Arhitektura: SVR sa RBF kernelom
                 \end{itemize}
             \item \textbf{CNN + LSTM:}
                 \begin{itemize}
@@ -105,23 +105,28 @@ Predviđanje nivoa depresije kod ljudi na osnovu audio zapisa
     \column{0.33}
     \block{Rezultati}{
         \begin{center}
+            {\Large \textbf{Validation}} \par
+            \vspace{0.5em}
             \begin{tabular}{l|c|c|c}
-                \textbf{Model - validation} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
+                \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
                 \hline
-                SVR & 4.29 & 4.98 & \textbf{0.52} \\
-                CNN+LSTM & \textbf{3.99} & \textbf{5.02} & 0.45 \\
+                SVR & 4.29 & \textbf{4.98} & \textbf{0.52} \\
+                CNN+LSTM & \textbf{3.99} & 5.02 & 0.45 \\
             \end{tabular}
         \end{center}
+        \vspace{1em}
         \begin{center}
+            {\Large \textbf{Test}} \par
+            \vspace{0.5em}
             \begin{tabular}{l|c|c|c}
-                \textbf{Model - test} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
+                \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Prsn} \\
                 \hline
-                SVR & 4.37 & 6.17 & \textbf{0.27} \\
-                CNN+LSTM & \textbf{5.51} & \textbf{7.20} & 0.05 \\
+                SVR & \textbf{4.37} & \textbf{6.17} & \textbf{0.27} \\
+                CNN+LSTM & 5.51 & 7.20 & 0.05 \\
             \end{tabular}
         \end{center}
         \vspace{0.5em}
-        CNN+LSTM model postiže preciznija predviđanja (niži MAE), dok SVR pokazuje bolju linearnu korelaciju.
+        SVR pobedjuje u svim kategorijama, osim za MAE na validacionom skupu.
     }
 
     \block{Zaključak}{
